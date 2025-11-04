@@ -20,7 +20,7 @@ This interactive app allows you to:
 
 **How to use:**  
 1. Enter your Finnhub API Key (optional).  
-2. Choose a filter or enter a stock symbol.  
+2. Choose a stock from the dropdown or enter a stock symbol.  
 3. Click "Get Recommendations".  
 4. Explore stock information and charts.  
 
@@ -29,15 +29,31 @@ This interactive app allows you to:
 
 # ====== USER INPUT ======
 api_key = st.text_input("Enter your Finnhub API Key (optional):", "")
-stock_filter = st.selectbox("Filter by price movement:", ["All", "Gainers", "Losers"])
-search_symbol = st.text_input("Search by stock symbol (optional):", "")
 
+kospi_stocks_dict = {
+    "Samsung Electronics": "005930.KS",
+    "SK Hynix": "000660.KS",
+    "Naver": "035420.KS",
+    "LG Chem": "051910.KS",
+    "Samsung Biologics": "207940.KS"
+}
+
+selected_stock_name = st.selectbox("Select a stock (dropdown):", ["All"] + list(kospi_stocks_dict.keys()))
+search_symbol_input = st.text_input("Or enter stock symbol (optional):", "")
+stock_filter = st.selectbox("Filter by price movement:", ["All", "Gainers", "Losers"])
 search_button = st.button("Get Recommendations")
 
-# ====== STOCK SYMBOLS ======
-kospi_stocks = ["005930.KS","000660.KS","035420.KS","051910.KS","207940.KS"]  # Samsung, SK Hynix, Naver, LG Chem, Samsung Biologics
+# ====== DETERMINE SEARCH SYMBOL ======
+if selected_stock_name != "All":
+    search_symbol = kospi_stocks_dict[selected_stock_name]
+elif search_symbol_input:
+    search_symbol = search_symbol_input.upper()
+else:
+    search_symbol = ""
 
 # ====== FETCH STOCK DATA ======
+kospi_stocks = list(kospi_stocks_dict.values())  # All stock codes
+
 if search_button:
     stock_data = []
 
@@ -45,7 +61,7 @@ if search_button:
         st.info("Fetching real-time data from Finnhub...")
         base_url = "https://finnhub.io/api/v1/quote"
         for symbol in kospi_stocks:
-            if search_symbol and search_symbol.upper() not in symbol:
+            if search_symbol and search_symbol not in symbol:
                 continue
             params = {"symbol": symbol, "token": api_key}
             try:
@@ -63,7 +79,6 @@ if search_button:
                 })
             except Exception as e:
                 st.warning(f"Failed to fetch data for {symbol}: {e}")
-
     else:  # Use simulated data
         st.info("Using simulated stock data (no API Key provided).")
         stock_data = [
@@ -74,7 +89,7 @@ if search_button:
             {"symbol":"207940.KS","current_price":950000,"previous_close":940000,"change":10000},
         ]
         if search_symbol:
-            stock_data = [s for s in stock_data if search_symbol.upper() in s["symbol"]]
+            stock_data = [s for s in stock_data if search_symbol in s["symbol"]]
 
     if stock_data:
         df = pd.DataFrame(stock_data)
@@ -99,7 +114,7 @@ if search_button:
         plt.legend()
         st.pyplot(plt)
 
-        # ====== Optional: Historical 7-day chart using yfinance ======
+        # ====== Historical 7-day chart using yfinance ======
         st.subheader("Historical 7-Day Price Trend")
         for row in df.itertuples():
             symbol = row.symbol
@@ -119,3 +134,4 @@ if search_button:
                 st.warning(f"Cannot fetch historical data for {symbol}")
     else:
         st.warning("No stocks matched your filters or API returned no data.")
+
