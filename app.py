@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import matplotlib.pyplot as plt
 import yfinance as yf
+import random
 
 # ====== PAGE CONFIG ======
 st.set_page_config(page_title="KOSPI 200 Stock Explorer", page_icon="📈", layout="wide")
@@ -24,7 +25,7 @@ This interactive app allows you to:
 3. Click "Get Stock Info".  
 4. Explore stock information and charts.  
 
-*Note: If you do not provide an API Key, simulated stock data will be used.*
+*Note: If you do not provide an API Key, simulated stock data with random variation will be used.*
 """)
 
 # ====== USER INPUT ======
@@ -76,17 +77,19 @@ if search_button:
                 })
             except Exception as e:
                 st.warning(f"Failed to fetch data for {symbol}: {e}")
-    else:  # Simulated data
+    else:  # Simulated data with random variation
         st.info("Using simulated stock data (no API Key).")
         for symbol in kospi_stocks:
+            if search_symbol and search_symbol not in symbol:
+                continue
+            prev_close = random.randint(90000, 120000)
+            curr_price = prev_close + random.randint(-5000, 5000)
             stock_data.append({
                 "symbol": symbol,
-                "current_price": 100000,
-                "previous_close": 99500,
-                "change": 500
+                "current_price": curr_price,
+                "previous_close": prev_close,
+                "change": curr_price - prev_close
             })
-        if search_symbol:
-            stock_data = [s for s in stock_data if search_symbol in s["symbol"]]
 
     # ====== CONVERT TO DATAFRAME ======
     if stock_data:
@@ -139,3 +142,4 @@ if search_button:
                 st.warning(f"Cannot fetch historical data for {symbol}")
     else:
         st.warning("No stocks matched your filters or API returned no data.")
+
