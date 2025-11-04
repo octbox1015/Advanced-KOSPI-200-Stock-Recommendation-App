@@ -5,59 +5,55 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 
 # ====== PAGE CONFIG ======
-st.set_page_config(page_title="KOSPI 200 Stock Recommendation", page_icon="📈", layout="wide")
+st.set_page_config(page_title="KOSPI 200 Stock Explorer", page_icon="📈", layout="wide")
 
 # ====== INTRODUCTION ======
-st.title("📈 KOSPI 200 Stock Recommendation System - English Version")
+st.title("📈 KOSPI 200 Stock Explorer - English Version")
 st.markdown("""
-Welcome to the **KOSPI 200 Stock Recommendation System**!  
+Welcome to the **KOSPI 200 Stock Explorer**!  
 
 This interactive app allows you to:  
-- Browse top recommended KOSPI 200 stocks  
+- Browse KOSPI 200 stocks  
 - Filter by price change (up/down)  
 - View historical price trends  
 - Search for specific stocks  
 
 **How to use:**  
 1. Enter your Finnhub API Key (optional).  
-2. Choose a stock from the dropdown or enter a stock symbol.  
-3. Click "Get Recommendations".  
+2. Select a stock from the dropdown or enter a stock symbol.  
+3. Click "Get Stock Info".  
 4. Explore stock information and charts.  
 
-*Note: If you do not provide an API Key, the app will use simulated stock data.*
+*Note: If you do not provide an API Key, simulated stock data will be used.*
 """)
 
 # ====== USER INPUT ======
 api_key = st.text_input("Enter your Finnhub API Key (optional):", "")
 
-kospi_stocks_dict = {
-    "Samsung Electronics": "005930.KS",
-    "SK Hynix": "000660.KS",
-    "Naver": "035420.KS",
-    "LG Chem": "051910.KS",
-    "Samsung Biologics": "207940.KS"
-}
+# Load KOSPI 200 CSV
+df_stocks = pd.read_csv("kospi200.csv")
 
-selected_stock_name = st.selectbox("Select a stock (dropdown):", ["All"] + list(kospi_stocks_dict.keys()))
+# Dropdown + search input
+selected_stock_name = st.selectbox("Select a stock:", ["All"] + df_stocks["name"].tolist())
 search_symbol_input = st.text_input("Or enter stock symbol (optional):", "")
 stock_filter = st.selectbox("Filter by price movement:", ["All", "Gainers", "Losers"])
-search_button = st.button("Get Recommendations")
+search_button = st.button("Get Stock Info")
 
-# ====== DETERMINE SEARCH SYMBOL ======
+# Determine symbol
 if selected_stock_name != "All":
-    search_symbol = kospi_stocks_dict[selected_stock_name]
+    search_symbol = df_stocks[df_stocks["name"]==selected_stock_name]["symbol"].values[0]
 elif search_symbol_input:
     search_symbol = search_symbol_input.upper()
 else:
     search_symbol = ""
 
-# ====== FETCH STOCK DATA ======
-kospi_stocks = list(kospi_stocks_dict.values())  # All stock codes
+# Stock list to check
+kospi_stocks = df_stocks["symbol"].tolist()
 
 if search_button:
     stock_data = []
 
-    if api_key:  # Use Finnhub API
+    if api_key:  # Fetch real data from Finnhub
         st.info("Fetching real-time data from Finnhub...")
         base_url = "https://finnhub.io/api/v1/quote"
         for symbol in kospi_stocks:
@@ -80,14 +76,14 @@ if search_button:
             except Exception as e:
                 st.warning(f"Failed to fetch data for {symbol}: {e}")
     else:  # Use simulated data
-        st.info("Using simulated stock data (no API Key provided).")
-        stock_data = [
-            {"symbol":"005930.KS","current_price":61000,"previous_close":60500,"change":500},
-            {"symbol":"000660.KS","current_price":100000,"previous_close":99500,"change":500},
-            {"symbol":"035420.KS","current_price":350000,"previous_close":345000,"change":500},
-            {"symbol":"051910.KS","current_price":750000,"previous_close":740000,"change":10000},
-            {"symbol":"207940.KS","current_price":950000,"previous_close":940000,"change":10000},
-        ]
+        st.info("Using simulated stock data (no API Key).")
+        for symbol in kospi_stocks[:20]:  # demo first 20
+            stock_data.append({
+                "symbol": symbol,
+                "current_price": 100000,
+                "previous_close": 99500,
+                "change": 500
+            })
         if search_symbol:
             stock_data = [s for s in stock_data if search_symbol in s["symbol"]]
 
@@ -100,10 +96,10 @@ if search_button:
         elif stock_filter == "Losers":
             df = df[df["change"] < 0]
 
-        st.subheader("KOSPI 200 Stock Recommendations")
+        st.subheader("KOSPI 200 Stock Info")
         st.dataframe(df)
 
-        # ====== Interactive plot ======
+        # Interactive plot
         st.subheader("Stock Price Comparison")
         plt.figure(figsize=(8,4))
         for idx, row in df.iterrows():
@@ -114,7 +110,7 @@ if search_button:
         plt.legend()
         st.pyplot(plt)
 
-        # ====== Historical 7-day chart using yfinance ======
+        # Historical 7-day chart
         st.subheader("Historical 7-Day Price Trend")
         for row in df.itertuples():
             symbol = row.symbol
@@ -134,4 +130,5 @@ if search_button:
                 st.warning(f"Cannot fetch historical data for {symbol}")
     else:
         st.warning("No stocks matched your filters or API returned no data.")
+
 
