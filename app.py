@@ -1,6 +1,6 @@
 import streamlit as st
-import requests
 import pandas as pd
+import requests
 import matplotlib.pyplot as plt
 import yfinance as yf
 
@@ -53,6 +53,7 @@ kospi_stocks = df_stocks["symbol"].tolist()
 if search_button:
     stock_data = []
 
+    # ====== FETCH STOCK DATA ======
     if api_key:  # Fetch real data from Finnhub
         st.info("Fetching real-time data from Finnhub...")
         base_url = "https://finnhub.io/api/v1/quote"
@@ -75,9 +76,9 @@ if search_button:
                 })
             except Exception as e:
                 st.warning(f"Failed to fetch data for {symbol}: {e}")
-    else:  # Use simulated data
+    else:  # Simulated data
         st.info("Using simulated stock data (no API Key).")
-        for symbol in kospi_stocks[:20]:  # demo first 20
+        for symbol in kospi_stocks:
             stock_data.append({
                 "symbol": symbol,
                 "current_price": 100000,
@@ -87,6 +88,7 @@ if search_button:
         if search_symbol:
             stock_data = [s for s in stock_data if search_symbol in s["symbol"]]
 
+    # ====== CONVERT TO DATAFRAME ======
     if stock_data:
         df = pd.DataFrame(stock_data)
 
@@ -96,21 +98,27 @@ if search_button:
         elif stock_filter == "Losers":
             df = df[df["change"] < 0]
 
-        st.subheader("KOSPI 200 Stock Info")
-        st.dataframe(df)
+        # If empty after filter, show all
+        if df.empty:
+            st.warning("No stocks matched your filters. Showing all stocks instead.")
+            df = pd.DataFrame(stock_data)
 
-        # Interactive plot
+        # ====== MAIN PRICE COMPARISON ======
         st.subheader("Stock Price Comparison")
-        plt.figure(figsize=(8,4))
+        plt.figure(figsize=(10,6))
+        colors = plt.cm.get_cmap('tab20', len(df))
         for idx, row in df.iterrows():
             prices = [row["previous_close"], row["current_price"]]
-            plt.plot(["Previous Close", "Current Price"], prices, marker='o', label=row["symbol"])
+            plt.plot(["Previous Close", "Current Price"], prices,
+                     marker='o', color=colors(idx), label=row["symbol"])
         plt.ylabel("Price (KRW)")
-        plt.title("Stock Price Change")
-        plt.legend()
+        plt.title("Stock Price Change - Selected Stocks")
+        plt.legend(bbox_to_anchor=(1.05,1), loc='upper left')
+        plt.grid(True)
+        plt.tight_layout()
         st.pyplot(plt)
 
-        # Historical 7-day chart
+        # ====== HISTORICAL 7-DAY TREND ======
         st.subheader("Historical 7-Day Price Trend")
         for row in df.itertuples():
             symbol = row.symbol
@@ -119,16 +127,15 @@ if search_button:
                 hist = stock.history(period="7d")
                 if hist.empty:
                     continue
-                plt.figure(figsize=(8,3))
-                plt.plot(hist.index, hist['Close'], marker='o')
+                plt.figure(figsize=(10,4))
+                plt.plot(hist.index, hist['Close'], marker='o', label=symbol)
                 plt.title(f"{symbol} - Last 7 Days Close Price")
                 plt.ylabel("Price (KRW)")
                 plt.xticks(rotation=45)
                 plt.grid(True)
+                plt.legend()
                 st.pyplot(plt)
             except:
                 st.warning(f"Cannot fetch historical data for {symbol}")
     else:
         st.warning("No stocks matched your filters or API returned no data.")
-
-
